@@ -1,30 +1,14 @@
-import http from 'http'
+import {IUserImages, INamesFile, IUsersFromDatabase, IRequest, IResponse} from './interfaces'
+
+import dotenv from 'dotenv'
+dotenv.config()
 import path from 'path'
-import fs, { ReadStream } from 'fs'
+import fs from 'fs'
 import FormData from 'form-data'
 
-interface IFormDataRequest {
-    url: string,
-    formData: FormData[]
-}
+import requests from './requests'
 
-interface INamesFile {
-    men: string[],
-    women: string[]
-}
-
-interface IUserImages {
-    men: {
-        path: string,
-        bufferArray: Array<ReadStream>
-    },
-    women: {
-        path: string,
-        bufferArray: Array<ReadStream>
-    }
-}
-
-function getFileData() {
+function getUsersPhotoFileData() {
     const images: IUserImages = {
         men: {
             path: path.resolve('./', 'men'),
@@ -77,42 +61,57 @@ function getUsersFormData(userImages: IUserImages) {
     return users
 }
 
-function sendFormDataRequests(config: IFormDataRequest) {
-    let requests: Array<Promise<any>> = []
-
-    config.formData.forEach(form => {
-        requests.push(new Promise((resolve, reject) => {
-            const req = http.request(config.url, {
-                method: 'POST',  
-                headers: form.getHeaders()
-            }, res => {
-                let data = ''
-                
-                res.on('data', chunk => {
-                    data += chunk
-                })
-                
-                res.on('end', () => {
-                    resolve(JSON.parse(data))
-                }) 
-            }).on('error', err => {
-                reject(err)
-            })
-            
-            form.pipe(req)
-        }))
-    })
-    
-    Promise.all(requests).then(result => {
-        console.log(result)
-    }).catch(err => {
-        console.log(err)
-    })
-}
-
-let userImages = getFileData()
+/* let userImages = getUsersPhotoFileData()
 let usersFormData = getUsersFormData(userImages)
-sendFormDataRequests({
+
+requests.sendFormDataRequest({
     url: 'http://localhost:5000/register',
     formData: usersFormData
-})
+}) */
+
+requests.sendRequest({
+    url: 'http://localhost:5000/login',
+    body: {
+        login: process.env.MY_LOGIN,
+        password: process.env.MY_PASSWORD
+    }
+}).then(res1 => {
+    let sessionCookie = res1.info.headers['set-cookie']
+
+    requests.sendRequest({
+        url: 'http://localhost:5000/userfilter?from=0&to=20&username=',
+        method: 'GET',
+        headers: {
+            'content-type': 'application/json',
+            'Cookie': sessionCookie ? sessionCookie.toString() : ''
+        }
+    }).then(res2 => {
+        let usersFromDatabase = res2.data as IUsersFromDatabase
+    
+        let usersDatabasePath = path.resolve('./', 'usersDatabase.json')
+    
+        fs.writeFileSync(usersDatabasePath, JSON.stringify(usersFromDatabase))
+
+        usersFromDatabase.users.forEach(user => {
+            requests.sendRequest({
+                url: 'https://api.adviceslip.com/advice',
+                method: 'GET',
+                isHttps: true
+            }).then(resAdvice => {
+                let advice: string = resAdvice.data.slip.quote
+                console.log(sessionCookie)
+                requests.sendRequest({
+                    url: 'http://localhost:5000/posts',
+                    body: {
+                        db_user_id: user._id,
+                        content: advice,
+                        headers: {
+                            'content-type': 'application/json',
+                            'Cookie': sessionCookie ? sessionCookie.toString() : ''
+                        }
+                    }
+                })
+            }).catch(err => console.log(err))
+        })
+    }).catch(err => console.log(err))
+}).catch(err => console.log(err))
