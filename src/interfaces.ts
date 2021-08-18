@@ -12,7 +12,7 @@ export interface IRequest {
     method?: string,
     headers?: {
         'content-type': string,
-        'Cookie': string
+        'Cookie': string | string[]
     },
     body?: Object,
     isHttps?: boolean

@@ -5,13 +5,12 @@
   "main": "script.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "ts-node-dev --rs --transpile-only --inspect -- script.ts"
+    "dev": "ts-node-dev --rs --transpile-only ./src/script.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "dotenv": "^10.0.0",
     "form-data": "^4.0.0"
   },
   "devDependencies": {

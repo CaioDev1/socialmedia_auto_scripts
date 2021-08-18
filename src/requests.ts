@@ -12,7 +12,6 @@ export default {
         })
         
         res.on('end', () => {
-            console.log(data)
             let response: IResponse = {
                 info: res,
                 data: JSON.parse(data)
